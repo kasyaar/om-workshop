@@ -49,7 +49,7 @@
 (defn sync-tags "doc-string" [user-data] 
   (let [creds (get-creds user-data)
         lists (:body (lists-list :oauth-creds creds))
-        tags (map (fn [lst] {:name (:slug lst) :members (:member_count lst)}) lists)
+        tags (map (fn [lst] {:name (:slug lst) :member_count (:member_count lst)}) lists)
         {sessid :_id} user-data]
     (with-db db 
       (-> 
