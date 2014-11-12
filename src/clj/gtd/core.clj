@@ -44,45 +44,47 @@
     (if (= sessid nil)
       (render-file "signup" {:title "Sign Up with Twitter"})
       (let [user-data (with-db db (get-document sessid))]
-        (render-file "index" {:title "Getting tweets done"})))
-  )
+        (render-file "index" {:title "Getting tweets done"}))))
 
 (defn sync-tags "doc-string" [user-data] 
   (let [creds (get-creds user-data)
-         lists (:body (lists-list :oauth-creds creds))
+        lists (:body (lists-list :oauth-creds creds))
         tags (map (fn [lst] {:name (:slug lst) :members (:member_count lst)}) lists)
         {sessid :_id} user-data]
-    (with-db db (-> (get-document sessid) (update-document {:tags tags})))
-    )
-  )
+    (with-db db 
+      (-> 
+        (get-document sessid) 
+        (update-document {:tags tags})))))
 
 (defn tags "doc-string" [{{sessid :value} "sessid"}]
-  (str sessid)  
   (let [ user-data (with-db db (get-document sessid))
         {tags :tags} user-data]
-    (if (= tags nil) 
-      (generate-string (:tags (sync-tags user-data)) [:pretty true])
-      (generate-string tags {:pretty true}))))
+    (response/header 
+      (response/response 
+        (if (= tags nil) 
+          (generate-string (:tags (sync-tags user-data)) [:pretty true])
+          (generate-string tags {:pretty true}))) 
+      "Content-Type" "application/json")))
 
 
 (defn signup "doc-string" [req]
-  (let [
-        auth-url (oauth/user-approval-uri consumer (:oauth_token request-token))]
-    (response/redirect auth-url)
-    ))
+  (let [auth-url 
+        (oauth/user-approval-uri consumer (:oauth_token request-token))]
+    (response/redirect auth-url)))
+
 (defn twitter_callback "doc-string" [{token :oauth_token verifier :oauth_verifier}]
  (let [{access-token :oauth_token access-sec :oauth_token_secret} (oauth/access-token consumer request-token verifier)
        creds (make-oauth-creds cons-key cons-sec access-token access-sec)
        user-details (:body (account-verify-credentials :oauth-creds creds))
        user-name (:screen_name user-details)
-       {sessid :_id} (with-db db (put-document 
-                                  {:type "user" 
-                                   :name user-name 
-                                   :details user-details 
-                                   :auth {:access-token access-token :access-token-secret access-sec}}))
-       ]
-   (response/set-cookie (response/redirect "/") "sessid" (str sessid))
- ))
+       {sessid :_id} (with-db db 
+                       (put-document 
+                         {:type "user" 
+                          :name user-name 
+                          :details user-details 
+                          :auth {:access-token access-token :access-token-secret access-sec}}))]
+   (response/set-cookie 
+     (response/redirect "/") "sessid" (str sessid))))
 
 (defroutes all-routes
   (GET "/" {params :params cookies :cookies} (index params cookies))
