@@ -40,7 +40,6 @@
 
 (defn index "doc-string" 
   [params {{sessid :value} "sessid"}]
-    (str sessid)
     (if (= sessid nil)
       (render-file "signup" {:title "Sign Up with Twitter"})
       (let [user-data (with-db db (get-document sessid))]
