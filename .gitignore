@@ -2,3 +2,5 @@ target
 .lein-repl-history
 .nrepl-port
 main.js
+cscope.files
+cscope.out

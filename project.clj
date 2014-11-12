@@ -27,6 +27,7 @@
                  [om "0.7.1"]
                  [prismatic/dommy "1.0.0"]
                  [clj-oauth "1.5.1"]
+                 [cljs-ajax "0.3.3"]
                  [twitter-api "0.7.7"]
                  [hbs "0.6.0"]
                  [com.ashafa/clutch "0.4.0"]
