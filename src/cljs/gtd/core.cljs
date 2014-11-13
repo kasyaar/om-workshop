@@ -18,6 +18,13 @@
                      (:name tag) 
                      (dom/span #js {:className "badge"} (:member_count tag)))))))
 
+(defn member-view "doc-string" [member owner]
+  (reify
+    om/IRender
+    (render [this]
+      (dom/li #js {:className "active"}
+              (dom/a nil (:name member))))))
+
 (defn update-tags "doc-string" [resp app owner]
   (om/set-state! owner :sidebar-title "Tags list")
   (om/set-state! owner :sidebar resp));;put ajax response to the :tags field of app-state
@@ -25,6 +32,8 @@
 (defmulti list-entry-view  (fn [entry _] (:type entry)))
 (defmethod list-entry-view "tag"
   [entry owner] (tag-view entry owner) )
+(defmethod list-entry-view "member"
+  [entry owner] (member-view entry owner))
 
 (defn list-view "doc-string" [app owner]
   (reify
@@ -49,12 +58,18 @@
       (om/build list-view {:items (:sidebar state) :title "Tags list"}))))
 
 
-(om/root sidebar-view app-state
-         {:target (. js/document (getElementById "tags"))})
+(defn main-view "doc-string" [app owner]
+  (reify 
+    om/IInitState
+    (init-state [_] 
+      {:main []})
+    om/IRenderState
+    (render-state [app state]
+      (om/build list-view {:items (:main state) :title "Members list"}))))
 
-(om/root (fn [app owner] 
-           (reify 
-           om/IRender
-           (render [_]
-                   (dom/h2 nil "List memebers")))) app-state
-         {:target (. js/document (getElementById "members"))})
+(om/root sidebar-view app-state
+         {:target (. js/document (getElementById "sidebar"))})
+
+
+(om/root main-view app-state
+         {:target (. js/document (getElementById "main"))})
