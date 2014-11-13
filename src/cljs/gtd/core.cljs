@@ -19,24 +19,42 @@
                      (dom/span #js {:className "badge"} (:member_count tag)))))))
 
 (defn update-tags "doc-string" [resp app owner]
-  (om/set-state! owner :tags resp));;put ajax response to the :tags field of app-state
+  (om/set-state! owner :sidebar-title "Tags list")
+  (om/set-state! owner :sidebar resp));;put ajax response to the :tags field of app-state
 
+(defmulti list-entry-view  (fn [entry _] (:type entry)))
+(defmethod list-entry-view "tag"
+  [entry owner] (tag-view entry owner) )
 
-(defn main-view [app owner]
+(defn list-view "doc-string" [app owner]
+  (reify
+    om/IRender
+    (render [this]
+        (dom/div nil 
+                 (dom/h2 nil (:title app))
+                 (apply dom/ul #js {:className "nav nav-pills nav-stacked"}
+                        (om/build-all list-entry-view (:items app)))
+                 )))) ;;will redraw on state change
+
+(defn sidebar-view "doc-string" [app owner]
   (reify
     om/IInitState
     (init-state [_]
       (GET "/tags"
            {:handler #(update-tags % app owner) ;;callback for ajax request which returns tags
             :response-format (json-response-format {:keywords? true})})
-      {:tags []})
+      {:sidebar []})
     om/IRenderState
-    (render-state [this state]
-        (dom/div nil 
-                 (dom/h2 nil "Tag list")
-                 (apply dom/ul #js {:className "nav nav-pills nav-stacked"}
-                        (om/build-all tag-view (:tags state))))))) ;;will redraw on state change
-                 
+    (render-state [app state]
+      (om/build list-view {:items (:sidebar state) :title "Tags list"}))))
 
-(om/root main-view app-state
-         {:target (. js/document (getElementById "content"))})
+
+(om/root sidebar-view app-state
+         {:target (. js/document (getElementById "tags"))})
+
+(om/root (fn [app owner] 
+           (reify 
+           om/IRender
+           (render [_]
+                   (dom/h2 nil "List memebers")))) app-state
+         {:target (. js/document (getElementById "members"))})
