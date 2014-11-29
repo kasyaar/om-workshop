@@ -10,7 +10,7 @@
     [twitter.callbacks]
     [twitter.callbacks.handlers]
     [twitter.api.restful]
-    [com.ashafa.clutch :only [with-db put-document update-document get-document]]
+    [com.ashafa.clutch :only [with-db put-document update-document get-document ad-hoc-view view-server-fns save-view get-view]]
     [cheshire.core :only [generate-string]]
     org.httpkit.server)
   (:require 
@@ -19,24 +19,30 @@
     [compojure.route :as route]
     [clojure.java.io :as io])
   (:gen-class))
+
 (def cons-key     "V1okDMhoTeNqR4zTdd41dcY1L")
 (def cons-sec    "Gf8uPEZ9R7ZgGdgB1RYSwitI1KhxygtsASFJaSHQWvCtaeRDip")
 (def consumer
-  (oauth/make-consumer
-    cons-key
-    cons-sec
-    "https://api.twitter.com/oauth/request_token"
-    "https://api.twitter.com/oauth/access_token"
-    "https://api.twitter.com/oauth/authorize"
-    :hmac-sha1)
-  )
+  (delay 
+    (oauth/make-consumer
+      cons-key
+      cons-sec
+      "https://api.twitter.com/oauth/request_token"
+      "https://api.twitter.com/oauth/access_token"
+      "https://api.twitter.com/oauth/authorize"
+      :hmac-sha1)))
 
-(def request-token (oauth/request-token consumer "http://localhost:3000/twitter_callback"))
+(def request-token 
+  (delay 
+    (oauth/request-token consumer "http://localhost:3000/twitter_callback")))
+
+
 (set-template-path! "/templates" ".html")
 (def db "http://localhost:5984/simple")
 
 (defn get-creds "doc-string" [{{token :access-token secret :access-token-secret} :auth}]
           (make-oauth-creds cons-key cons-sec token secret))
+
 
 (defn index "doc-string" 
   [params {{sessid :value} "sessid"}]
@@ -55,12 +61,18 @@
         (get-document sessid) 
         (update-document {:tags tags})))))
 
-(defn tags "doc-string" [{{sessid :value} "sessid"}]
+(defn members "doc-string" [sessid tag-name]
+  (let [user-data1 (with-db db (get-view "search" "members" {:key (str sessid "_" tag-name)}))
+        user-data (with-db db (get-document sessid))]
+    (doall (map str  user-data1))
+    ))
+
+(defn tags "doc-string" [sessid]
   (let [ user-data (with-db db (get-document sessid))
         {tags :tags} user-data]
     (response/header 
       (response/response 
-        (if (= tags nil) 
+    (if (= tags nil) 
           (generate-string (:tags (sync-tags user-data)) [:pretty true])
           (generate-string tags {:pretty true}))) 
       "Content-Type" "application/json")))
@@ -89,7 +101,9 @@
   (GET "/" {params :params cookies :cookies} (index params cookies))
   (GET "/signup" [] signup)
   (GET "/twitter_callback" {params :params} (twitter_callback params))
-  (GET "/tags" {cookies :cookies} (tags cookies))
+  (context "/tags" {{{sessid :value} "sessid"} :cookies}
+           (GET "/" [] (tags sessid)) 
+           (GET "/:tag-name/members" [tag-name] (members sessid tag-name)))
   (route/files "/")
   (route/resources "/")
   (route/not-found "Page not found"))

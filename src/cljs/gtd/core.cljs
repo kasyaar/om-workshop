@@ -62,7 +62,7 @@
   (reify 
     om/IInitState
     (init-state [_] 
-      {:main []})
+      {:main [{:type "member" :name "Vasya"} {:type "tag" :name "tag1" :member_count 90}]})
     om/IRenderState
     (render-state [app state]
       (om/build list-view {:items (:main state) :title "Members list"}))))
